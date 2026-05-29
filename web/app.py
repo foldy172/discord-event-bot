@@ -33,8 +33,11 @@ WEB_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 
 app = FastAPI(title="Foldy's Event Bot — панель")
-# max_age=None — cookie сессии браузера, после закрытия нужен новый вход
-app.add_middleware(SessionMiddleware, secret_key=WEB_SECRET, max_age=None)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=WEB_SECRET,
+    max_age=auth.SESSION_LIFETIME_SECONDS,
+)
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
 AuthRequired = Annotated[None, Depends(auth.require_auth)]
@@ -96,8 +99,11 @@ async def login_page(request: Request):
     if await auth.validate_session(request):
         return RedirectResponse("/", status_code=302)
     error = request.query_params.get("error")
-    if not error and request.session.pop("login_notice", None) == "deleted":
+    notice = request.session.pop("login_notice", None)
+    if not error and notice == "deleted":
         error = "Сессия завершена: учётная запись удалена. Войдите снова."
+    elif not error and notice == "expired":
+        error = "Сессия истекла (3 часа). Войдите снова."
     return templates.TemplateResponse(
         request,
         "login.html",

@@ -1,5 +1,6 @@
 import re
 import secrets
+import time
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -11,6 +12,8 @@ from web.passwords import verify_password
 
 ROLE_DEVELOPER = "developer"
 ROLE_ADMIN = "admin"
+
+SESSION_LIFETIME_SECONDS = 3 * 60 * 60  # 3 часа
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
 
@@ -67,10 +70,23 @@ def login_user(request: Request, username: str, role: str) -> None:
     request.session["authenticated"] = True
     request.session["username"] = username
     request.session["role"] = role
+    request.session["login_at"] = time.time()
 
 
 def logout_user(request: Request) -> None:
     request.session.clear()
+
+
+def _session_expired(request: Request) -> bool:
+    login_at = request.session.get("login_at")
+    if login_at is None:
+        return True
+    return (time.time() - float(login_at)) > SESSION_LIFETIME_SECONDS
+
+
+def _invalidate_session(request: Request, notice: str) -> None:
+    request.session.clear()
+    request.session["login_notice"] = notice
 
 
 def is_authenticated(request: Request) -> bool:
@@ -78,8 +94,11 @@ def is_authenticated(request: Request) -> bool:
 
 
 async def validate_session(request: Request) -> bool:
-    """Проверяет, что сессия ещё действительна (аккаунт не удалён)."""
+    """Срок сессии, аккаунт не удалён."""
     if not is_authenticated(request):
+        return False
+    if _session_expired(request):
+        _invalidate_session(request, "expired")
         return False
     role = request.session.get("role")
     username = request.session.get("username", "")
@@ -91,8 +110,7 @@ async def validate_session(request: Request) -> bool:
     if role == ROLE_ADMIN:
         if await db.get_web_panel_user(username):
             return True
-        request.session.clear()
-        request.session["login_notice"] = "deleted"
+        _invalidate_session(request, "deleted")
         return False
     logout_user(request)
     return False
