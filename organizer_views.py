@@ -22,6 +22,38 @@ def _role_line(guild: discord.Guild, role_id: int) -> str:
     return role.mention if role else f"`{role_id}`"
 
 
+async def _resolve_member(
+    guild: discord.Guild, user_id: int
+) -> discord.Member | None:
+    member = guild.get_member(user_id)
+    if member is not None:
+        return member
+    try:
+        return await guild.fetch_member(user_id)
+    except (discord.NotFound, discord.HTTPException):
+        return None
+
+
+async def format_user_label(
+    guild: discord.Guild,
+    user_id: int,
+    *,
+    client: discord.Client | None = None,
+) -> str:
+    """Ник на сервере + упоминание; если участника нет в кэше — @username из API."""
+    member = await _resolve_member(guild, user_id)
+    if member:
+        return f"**{member.display_name}** ({member.mention})"
+    if client:
+        try:
+            user = await client.fetch_user(user_id)
+            name = user.global_name or user.name
+            return f"**{name}** (<@{user_id}>, ID `{user_id}`)"
+        except discord.HTTPException:
+            pass
+    return f"<@{user_id}> (ID `{user_id}`)"
+
+
 async def format_organizers_list_text(guild: discord.Guild) -> str:
     guild_id = guild.id
     host_roles = await db.get_manager_roles(guild_id)
@@ -36,7 +68,7 @@ async def format_organizers_list_text(guild: discord.Guild) -> str:
         for role_id in sorted(ALLOWED_ROLE_IDS):
             lines.append(f"Роль: {_role_line(guild, role_id)}")
         for user_id in sorted(ALLOWED_USER_IDS):
-            lines.append(f"Пользователь: <@{user_id}>")
+            lines.append(f"Пользователь: {await format_user_label(guild, user_id)}")
     else:
         lines.append("(не задано)")
 
@@ -46,9 +78,7 @@ async def format_organizers_list_text(guild: discord.Guild) -> str:
         for role_id in host_roles:
             lines.append(f"Роль: {_role_line(guild, role_id)}")
         for user_id in host_users:
-            member = guild.get_member(user_id)
-            name = member.display_name if member else str(user_id)
-            lines.append(f"Пользователь: {name} (<@{user_id}>)")
+            lines.append(f"Пользователь: {await format_user_label(guild, user_id)}")
     else:
         lines.append("(пока никого)")
 
@@ -75,7 +105,7 @@ async def build_organizers_embed(guild: discord.Guild) -> discord.Embed:
     for role_id in sorted(ALLOWED_ROLE_IDS):
         env_lines.append(_role_line(guild, role_id))
     for user_id in sorted(ALLOWED_USER_IDS):
-        env_lines.append(f"<@{user_id}>")
+        env_lines.append(await format_user_label(guild, user_id))
     embed.add_field(
         name="Из .env",
         value="\n".join(env_lines) if env_lines else "_не задано_",
@@ -86,7 +116,7 @@ async def build_organizers_embed(guild: discord.Guild) -> discord.Embed:
     for role_id in host_roles:
         db_lines.append(f"🎭 {_role_line(guild, role_id)}")
     for user_id in host_users:
-        db_lines.append(f"👤 <@{user_id}>")
+        db_lines.append(f"👤 {await format_user_label(guild, user_id)}")
     embed.add_field(
         name="Через бота",
         value="\n".join(db_lines) if db_lines else "_пока никого — добавьте ниже_",
@@ -102,13 +132,18 @@ async def build_remove_options(
     guild_id = guild.id
     options: list[discord.SelectOption] = []
     for user_id in await db.get_manager_users(guild_id):
-        member = guild.get_member(user_id)
-        label = (member.display_name if member else f"ID {user_id}")[:100]
+        member = await _resolve_member(guild, user_id)
+        if member:
+            label = member.display_name[:100]
+            desc = f"@{member.name} · {user_id}"[:100]
+        else:
+            label = f"ID {user_id}"[:100]
+            desc = str(user_id)[:100]
         options.append(
             discord.SelectOption(
                 label=label,
                 value=f"u:{user_id}",
-                description="Пользователь",
+                description=desc,
                 emoji="👤",
             )
         )
@@ -268,11 +303,17 @@ class RemoveOrganizerSelect(discord.ui.Select):
 
         if kind == "u":
             removed = await db.remove_manager_user(self.guild_id, entity_id)
-            notice = (
-                f"<@{entity_id}> убран из организаторов."
-                if removed
-                else "Пользователь не найден в списке."
-            )
+            if removed and interaction.guild:
+                who = await format_user_label(
+                    interaction.guild,
+                    entity_id,
+                    client=interaction.client,
+                )
+                notice = f"{who} убран из организаторов."
+            elif removed:
+                notice = f"Пользователь `{entity_id}` убран из организаторов."
+            else:
+                notice = "Пользователь не найден в списке."
         elif kind == "r":
             removed = await db.remove_manager_role(self.guild_id, entity_id)
             role = interaction.guild.get_role(entity_id) if interaction.guild else None
