@@ -1,0 +1,29 @@
+[Unit]
+Description=Foldy Discord Event Bot (bot + web panel)
+Documentation=https://github.com/Foldy172/Discord-Event-Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/Discord-Event-Bot
+
+# Путь к venv — поменяйте, если проект лежит в другом месте
+Environment=PATH=/root/Discord-Event-Bot/.venv/bin:/usr/local/bin:/usr/bin
+ExecStart=/root/Discord-Event-Bot/.venv/bin/python main.py
+
+Restart=always
+RestartSec=10
+
+# Автоперезапуск раз в 24 часа (systemd 230+)
+RuntimeMaxSec=24h
+
+# Логи: journalctl -u discord-event-bot -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=discord-event-bot
+
+[Install]
+WantedBy=multi-user.target
