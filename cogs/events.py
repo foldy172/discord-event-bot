@@ -14,13 +14,8 @@ from list_views import (
     make_end_event_view,
     make_events_list_view,
 )
-from config import (
-    ADMIN_ROLE_IDS,
-    ADMIN_USER_IDS,
-    ALLOWED_ROLE_IDS,
-    ALLOWED_USER_IDS,
-    EVENT_CHANNEL_ID,
-)
+from organizer_views import build_organizers_embed, make_organizers_panel_view
+from config import EVENT_CHANNEL_ID
 from permissions import (
     MSG_NOT_CONFIGURED,
     MSG_NO_PERMISSION,
@@ -29,6 +24,7 @@ from permissions import (
     is_events_enabled,
     user_can_create,
     user_can_manage,
+    user_can_manage_organizers,
 )
 from utils import (
     allowed_mentions_for_role,
@@ -358,79 +354,28 @@ class EventsCog(commands.Cog):
 
     @event_group.command(
         name="организаторы",
-        description="Список хостеров и админов ивентов",
+        description="Кто может создавать ивенты: добавить, список, удалить",
     )
-    @app_commands.default_permissions(administrator=True)
     async def list_organizers(self, interaction: discord.Interaction):
-        if not interaction.guild:
+        if not interaction.guild or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
                 "Команда доступна только на сервере.", ephemeral=True
             )
             return
 
-        host_roles = await db.get_manager_roles(interaction.guild.id)
-        host_users = await db.get_manager_users(interaction.guild.id)
-        admin_roles = await db.get_admin_roles(interaction.guild.id)
-        admin_users = await db.get_admin_users(interaction.guild.id)
-        enabled = await is_events_enabled(interaction.guild.id)
-
-        if not enabled:
+        if not await user_can_manage_organizers(interaction.user):
             await interaction.response.send_message(
-                "Хостеры и админы не назначены. Ивенты отключены.",
+                "Управлять организаторами могут администраторы сервера и админы ивентов.",
                 ephemeral=True,
             )
             return
 
-        lines = []
-
-        lines.append("**Админы ивентов** (все ивенты):")
-        lines.append(
-            "_Также: участники с правом «Администратор» на сервере Discord._"
-        )
-        if ADMIN_ROLE_IDS or ADMIN_USER_IDS:
-            lines.append("_Из .env:_")
-            for role_id in sorted(ADMIN_ROLE_IDS):
-                role = interaction.guild.get_role(role_id)
-                lines.append(role.mention if role else f"роль `{role_id}`")
-            for user_id in sorted(ADMIN_USER_IDS):
-                lines.append(f"<@{user_id}>")
-        for role_id in admin_roles:
-            role = interaction.guild.get_role(role_id)
-            lines.append(role.mention if role else f"`{role_id}`")
-        for user_id in admin_users:
-            lines.append(f"<@{user_id}>")
-        if not (
-            ADMIN_ROLE_IDS
-            or ADMIN_USER_IDS
-            or admin_roles
-            or admin_users
-        ):
-            lines.append("_только через права Discord_")
-
-        lines.append("")
-        lines.append("**Ивент-хостеры** (свои ивенты + со-хостеры):")
-        if ALLOWED_ROLE_IDS or ALLOWED_USER_IDS:
-            lines.append("_Из .env:_")
-            for role_id in sorted(ALLOWED_ROLE_IDS):
-                role = interaction.guild.get_role(role_id)
-                lines.append(role.mention if role else f"роль `{role_id}`")
-            for user_id in sorted(ALLOWED_USER_IDS):
-                lines.append(f"<@{user_id}>")
-        for role_id in host_roles:
-            role = interaction.guild.get_role(role_id)
-            lines.append(role.mention if role else f"`{role_id}`")
-        for user_id in host_users:
-            lines.append(f"<@{user_id}>")
-        if not (
-            ALLOWED_ROLE_IDS
-            or ALLOWED_USER_IDS
-            or host_roles
-            or host_users
-        ):
-            lines.append("_не назначены_")
-
+        embed = await build_organizers_embed(interaction.guild)
+        view = await make_organizers_panel_view(interaction.guild, self.bot)
         await interaction.response.send_message(
-            "\n".join(lines), ephemeral=True
+            embed=embed,
+            view=view,
+            ephemeral=True,
         )
 
     async def cog_app_command_error(

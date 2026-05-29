@@ -122,3 +122,9 @@ async def user_can_assign_cohosts(
     if await user_is_event_admin(member):
         return True
     return member.id == event["creator_id"]
+
+
+async def user_can_manage_organizers(member: discord.Member) -> bool:
+    if member.guild_permissions.administrator:
+        return True
+    return await user_is_event_admin(member)
