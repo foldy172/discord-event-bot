@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#030508">
+  <title>{% block title %}Панель ивентов{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=cyber2">
+</head>
+<body>
+  <div class="cyber-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon"><span>E</span></div>
+        <h1>Event Bot</h1>
+        <p class="brand-tag">// control panel</p>
+        {% if guild.guild_id %}
+        <div class="guild-line">
+          {% if guild.guild_name %}{{ guild.guild_name }}{% else %}Сервер{% endif %}
+          <br><code>{{ guild.guild_id }}</code>
+        </div>
+        {% endif %}
+      </div>
+      <nav>
+        <a href="/" {% if request.url.path == "/" %}class="active"{% endif %}><span class="nav-dot"></span>Главная</a>
+        <a href="/events" {% if request.url.path.startswith("/events") %}class="active"{% endif %}><span class="nav-dot"></span>Ивенты</a>
+        <a href="/organizers" {% if request.url.path == "/organizers" %}class="active"{% endif %}><span class="nav-dot"></span>Организаторы</a>
+      </nav>
+      <form class="logout-form" method="post" action="/logout">
+        <button type="submit" class="btn btn-secondary btn-block">Выйти</button>
+      </form>
+    </aside>
+    <main class="main">
+      {% if flash %}
+      <div class="flash {{ flash.level }}">{{ flash.message }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+  <script src="/static/cyber-bg.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

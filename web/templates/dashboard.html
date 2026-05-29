@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<header class="page-header" data-animate>
+  <h2>Главная</h2>
+  <p class="subtitle">Обзор ивентов и управление архивом</p>
+  {% if guild.guild_id %}
+  <div class="server-badge">
+    <span>Сервер</span>
+    <code>{{ guild.guild_id }}</code>
+    {% if guild.guild_name %}
+    <span>({{ guild.guild_name }})</span>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Укажите <code>GUILD_ID</code> в <code>.env</code></p>
+  {% endif %}
+</header>
+
+{% if guild.guild_id %}
+<div class="stats">
+  <a href="/events?status=pending" class="stat-card pending" data-animate>
+    <div class="num">{{ stats.get("pending", 0) }}</div>
+    <div class="label">Предстоящие</div>
+  </a>
+  <a href="/events?status=active" class="stat-card active" data-animate>
+    <div class="num">{{ stats.get("active", 0) }}</div>
+    <div class="label">Идут сейчас</div>
+  </a>
+  <a href="/events?status=ended" class="stat-card ended" data-animate>
+    <div class="num">{{ stats.get("ended", 0) }}</div>
+    <div class="label">Завершённые</div>
+  </a>
+  <a href="/events?status=cancelled" class="stat-card cancelled" data-animate>
+    <div class="num">{{ stats.get("cancelled", 0) }}</div>
+    <div class="label">Отменённые</div>
+  </a>
+</div>
+
+<p data-animate><a href="/events" class="btn btn-primary">Все ивенты</a></p>
+
+<div class="card maintenance-card" data-animate>
+  <h3>Очистка базы данных</h3>
+  <p class="muted">
+    Удаляет из SQLite только <strong>завершённые</strong> и <strong>отменённые</strong> ивенты
+    (вместе с подписчиками и со-хостами). Сообщения в Discord не трогаются.
+  </p>
+  <div class="maintenance-stats">
+    <span>В архиве: <strong>{{ archived_count }}</strong></span>
+  </div>
+  {% if archived_count > 0 %}
+  <form
+    method="post"
+    action="/maintenance/cleanup-finished"
+    data-confirm="Удалить {{ archived_count }} ивент(ов) из базы? Это необратимо."
+  >
+    <div class="checkbox-row">
+      <input type="checkbox" id="confirm" name="confirm" value="yes" required>
+      <label for="confirm">Я понимаю, что записи будут удалены без восстановления</label>
+    </div>
+    <button type="submit" class="btn btn-danger">Очистить архив</button>
+  </form>
+  {% else %}
+  <p class="muted">Архив пуст — удалять нечего.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

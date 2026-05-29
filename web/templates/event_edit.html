@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Редактировать #{{ event.id }}{% endblock %}
+{% block content %}
+<header class="page-header" data-animate>
+  <h2>Редактировать #{{ event.id }}</h2>
+  <p class="subtitle">Время по МСК: <code>ЧЧ:ММ</code> или <code>ДД.ММ.ГГГГ ЧЧ:ММ</code></p>
+</header>
+
+<div class="card" data-animate style="max-width:560px">
+  <form method="post" action="/events/{{ event.id }}/edit">
+    <label for="title">Название</label>
+    <input id="title" name="title" value="{{ event.title }}" maxlength="256" required>
+    <label for="description">Описание</label>
+    <textarea id="description" name="description" maxlength="2000" required>{{ event.description }}</textarea>
+    <label for="roblox_mode">Режим Roblox</label>
+    <input id="roblox_mode" name="roblox_mode" value="{{ event.roblox_mode }}" maxlength="128" required>
+    <label for="event_time">Время начала</label>
+    <input id="event_time" name="event_time" value="{{ time_value }}" required>
+    <div class="actions">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+      <a href="/events/{{ event.id }}" class="btn btn-secondary">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

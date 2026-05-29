@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}#{{ event.id }} {{ event.title }}{% endblock %}
+{% block content %}
+<header class="page-header" data-animate>
+  <h2>{{ event.title }}</h2>
+  <p class="subtitle">
+    <span class="badge {{ event.status }}">{{ event.status_label }}</span>
+    · ID #{{ event.id }}
+    · <a href="{{ event.message_link }}" target="_blank" rel="noopener">Объявление в Discord ↗</a>
+  </p>
+</header>
+
+<div class="detail-grid">
+  <div class="card card-interactive" data-animate>
+    <h3>Информация</h3>
+    <p><strong>Название:</strong> {{ event.title }}</p>
+    <p><strong>Описание:</strong> {{ event.description }}</p>
+    <p><strong>Режим:</strong> {{ event.roblox_mode }}</p>
+
+    <p><strong>Начало</strong></p>
+    <div
+      class="countdown"
+      data-unix="{{ event.event_time_unix }}"
+      data-status="{{ event.status }}"
+    ></div>
+    <p class="countdown-date muted">{{ event.time_web }}</p>
+
+    <p><strong>Хост:</strong>
+      <a href="https://discord.com/users/{{ event.creator_id }}" target="_blank" rel="noopener">
+        {{ event.creator_label or ('Пользователь ' ~ event.creator_id) }}
+      </a>
+    </p>
+    <p><strong>Роль пинга:</strong>
+      {{ event.role_label or event.role_id }}
+      <span class="muted">(<code>{{ event.role_id }}</code>)</span>
+    </p>
+  </div>
+
+  <div class="card card-interactive" data-animate>
+    <h3>Со-хостеры ({{ event.cohosts | length }})</h3>
+    {% if event.cohosts | length > 0 %}
+    <ul class="id-list">
+      {% for item in event.cohosts_display %}
+      <li><a href="https://discord.com/users/{{ item.id }}" target="_blank" rel="noopener">{{ item.label }}</a></li>
+      {% endfor %}
+      {% if event.cohosts_display | length == 0 %}
+      {% for uid in event.cohosts %}
+      <li><a href="https://discord.com/users/{{ uid }}" target="_blank" rel="noopener">Пользователь {{ uid }}</a></li>
+      {% endfor %}
+      {% endif %}
+    </ul>
+    {% else %}
+    <p class="muted">Нет</p>
+    {% endif %}
+  </div>
+
+  <div class="card card-interactive" data-animate>
+    <h3>Подписались на ЛС ({{ event.subscriber_count }})</h3>
+    {% if event.subscriber_count > 0 %}
+    <ul class="id-list">
+      {% for item in event.subscribers_display %}
+      <li><a href="https://discord.com/users/{{ item.id }}" target="_blank" rel="noopener">{{ item.label }}</a></li>
+      {% endfor %}
+      {% if event.subscribers_display | length == 0 %}
+      {% for uid in event.subscribers %}
+      <li><a href="https://discord.com/users/{{ uid }}" target="_blank" rel="noopener">Пользователь {{ uid }}</a></li>
+      {% endfor %}
+      {% endif %}
+    </ul>
+    {% else %}
+    <p class="muted">Пока никто</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="actions" data-animate>
+  {% if event.status not in ["cancelled", "ended"] %}
+  <a href="/events/{{ event.id }}/edit" class="btn btn-primary">Редактировать</a>
+  {% endif %}
+  {% if event.status == "active" %}
+  <form method="post" action="/events/{{ event.id }}/end" data-confirm="Завершить ивент?">
+    <button type="submit" class="btn btn-primary">Завершить</button>
+  </form>
+  {% endif %}
+  {% if event.status in ["pending", "active"] %}
+  <form method="post" action="/events/{{ event.id }}/cancel" data-confirm="Отменить ивент?">
+    <button type="submit" class="btn btn-danger">Отменить</button>
+  </form>
+  {% endif %}
+  <a href="/events" class="btn btn-secondary">← К списку</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/countdown.js"></script>
+{% endblock %}

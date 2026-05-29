@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#030508">
+  <title>Вход — Event Bot</title>
+  <link rel="stylesheet" href="/static/style.css?v=cyber2">
+</head>
+<body class="login-page">
+  <div class="cyber-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+  <div class="login-wrap">
+    <div class="card login-card cyber-border">
+      <div class="brand-icon login-icon"><span>E</span></div>
+      <h2 class="login-title">Event Bot</h2>
+      <p class="brand-tag login-tag">// secure access</p>
+      {% if error %}
+      <div class="flash error flash-visible">{{ error }}</div>
+      {% endif %}
+      {% if not configured %}
+      <p class="muted">Добавьте в <code>.env</code> переменные <code>WEB_USERNAME</code> и <code>WEB_PASSWORD</code>, затем перезапустите бота.</p>
+      {% else %}
+      <form method="post" action="/login" class="login-form">
+        <label for="username">Логин</label>
+        <input id="username" name="username" type="text" required autocomplete="username" placeholder="admin">
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••">
+        <button type="submit" class="btn btn-primary btn-block">Подключиться</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+  <script src="/static/cyber-bg.js"></script>
+</body>
+</html>

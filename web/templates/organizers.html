@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Организаторы{% endblock %}
+{% block content %}
+<header class="page-header" data-animate>
+  <h2>Организаторы</h2>
+  <p class="subtitle">Хостеры и админы из <code>.env</code> и базы</p>
+</header>
+
+{% if not summary %}
+<p class="muted" data-animate>Укажите <code>GUILD_ID</code> в <code>.env</code>.</p>
+{% else %}
+<div class="detail-grid">
+  <div class="card card-interactive" data-animate>
+    <h3>Админы ивентов</h3>
+    <p class="muted">Из .env</p>
+    {% if summary.admin_roles_env %}
+    <ul class="id-list">{% for r in summary.admin_roles_env %}<li>{{ r.label }} <code>{{ r.id }}</code></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Роли: —</p>{% endif %}
+    {% if summary.admin_users_env %}
+    <ul class="id-list">{% for u in summary.admin_users_env %}<li><a href="https://discord.com/users/{{ u.id }}" target="_blank">{{ u.label }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    <p class="muted" style="margin-top:1rem">Из базы</p>
+    {% if summary.admin_roles_db %}
+    <ul class="id-list">{% for r in summary.admin_roles_db %}<li>{{ r.label }} <code>{{ r.id }}</code></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Роли: —</p>{% endif %}
+    {% if summary.admin_users_db %}
+    <ul class="id-list">{% for u in summary.admin_users_db %}<li><a href="https://discord.com/users/{{ u.id }}" target="_blank">{{ u.label }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    <p class="muted">Discord-администраторы сервера — полный доступ.</p>
+  </div>
+  <div class="card card-interactive" data-animate>
+    <h3>Ивент-хостеры</h3>
+    <p class="muted">Из .env</p>
+    {% if summary.host_roles_env %}
+    <ul class="id-list">{% for r in summary.host_roles_env %}<li>{{ r.label }} <code>{{ r.id }}</code></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Роли: —</p>{% endif %}
+    {% if summary.host_users_env %}
+    <ul class="id-list">{% for u in summary.host_users_env %}<li><a href="https://discord.com/users/{{ u.id }}" target="_blank">{{ u.label }}</a></li>{% endfor %}</ul>
+    {% endif %}
+    <p class="muted" style="margin-top:1rem">Из базы</p>
+    {% if summary.host_roles_db %}
+    <ul class="id-list">{% for r in summary.host_roles_db %}<li>{{ r.label }} <code>{{ r.id }}</code></li>{% endfor %}</ul>
+    {% else %}<p class="muted">Роли: —</p>{% endif %}
+    {% if summary.host_users_db %}
+    <ul class="id-list">{% for u in summary.host_users_db %}<li><a href="https://discord.com/users/{{ u.id }}" target="_blank">{{ u.label }}</a></li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
