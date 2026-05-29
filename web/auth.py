@@ -77,6 +77,27 @@ def is_authenticated(request: Request) -> bool:
     return bool(request.session.get("authenticated"))
 
 
+async def validate_session(request: Request) -> bool:
+    """Проверяет, что сессия ещё действительна (аккаунт не удалён)."""
+    if not is_authenticated(request):
+        return False
+    role = request.session.get("role")
+    username = request.session.get("username", "")
+    if role == ROLE_DEVELOPER:
+        if is_developer_username(username):
+            return True
+        logout_user(request)
+        return False
+    if role == ROLE_ADMIN:
+        if await db.get_web_panel_user(username):
+            return True
+        request.session.clear()
+        request.session["login_notice"] = "deleted"
+        return False
+    logout_user(request)
+    return False
+
+
 def session_user(request: Request) -> dict | None:
     if not is_authenticated(request):
         return None
@@ -93,7 +114,7 @@ async def require_auth(request: Request) -> None:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Веб-панель не настроена: укажите WEB_DEV_PASSWORD (или WEB_PASSWORD) в .env",
         )
-    if not is_authenticated(request):
+    if not await validate_session(request):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
