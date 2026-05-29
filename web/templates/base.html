@@ -30,7 +30,18 @@
         <a href="/" {% if request.url.path == "/" %}class="active"{% endif %}><span class="nav-dot"></span>Главная</a>
         <a href="/events" {% if request.url.path.startswith("/events") %}class="active"{% endif %}><span class="nav-dot"></span>Ивенты</a>
         <a href="/organizers" {% if request.url.path == "/organizers" %}class="active"{% endif %}><span class="nav-dot"></span>Организаторы</a>
+        {% if web_user and web_user.is_developer %}
+        <a href="/panel/users" {% if request.url.path.startswith("/panel") %}class="active"{% endif %}><span class="nav-dot"></span>Админы сайта</a>
+        {% endif %}
       </nav>
+      {% if web_user %}
+      <div class="session-user">
+        <span class="session-name">{{ web_user.username }}</span>
+        <span class="role-badge {% if web_user.is_developer %}role-dev{% else %}role-admin{% endif %}">
+          {% if web_user.is_developer %}разработчик{% else %}админ{% endif %}
+        </span>
+      </div>
+      {% endif %}
       <form class="logout-form" method="post" action="/logout">
         <button type="submit" class="btn btn-secondary btn-block">Выйти</button>
       </form>

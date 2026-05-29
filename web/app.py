@@ -25,6 +25,7 @@ from utils import (
 )
 from web import auth
 from web.discord_sync import sync_event_to_discord
+from web.passwords import hash_password
 from web.guild_info import get_guild_display, resolve_guild_id
 from web.services import get_event_full, get_organizers_summary, list_events_for_web
 
@@ -36,6 +37,7 @@ app.add_middleware(SessionMiddleware, secret_key=WEB_SECRET, max_age=60 * 60 * 2
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 
 AuthRequired = Annotated[None, Depends(auth.require_auth)]
+DevRequired = Annotated[None, Depends(auth.require_developer)]
 
 
 def _guild_id() -> int | None:
@@ -50,6 +52,7 @@ async def _render(request: Request, name: str, **context):
         {
             "guild": guild,
             "flash": _pop_flash(request),
+            "web_user": auth.session_user(request),
             **context,
         },
     )
@@ -74,6 +77,9 @@ def _time_input_value(event: dict) -> str:
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 401:
         return RedirectResponse("/login", status_code=302)
+    if exc.status_code == 403:
+        _flash(request, str(exc.detail), "error")
+        return RedirectResponse("/", status_code=303)
     if exc.status_code == 503:
         return templates.TemplateResponse(
             request,
@@ -106,15 +112,17 @@ async def login_submit(
 ):
     if not auth.credentials_configured():
         return RedirectResponse(
-            "/login?error=" + quote("Задайте WEB_USERNAME и WEB_PASSWORD в .env"),
+            "/login?error=" + quote("Задайте WEB_DEV_PASSWORD (или WEB_PASSWORD) в .env"),
             status_code=303,
         )
-    if not auth.verify_login(username, password):
+    session = await auth.authenticate(username, password)
+    if not session:
         return RedirectResponse(
             "/login?error=" + quote("Неверный логин или пароль"),
             status_code=303,
         )
-    auth.login_user(request)
+    uname, role = session
+    auth.login_user(request, uname, role)
     return RedirectResponse("/", status_code=303)
 
 
@@ -302,6 +310,68 @@ async def organizers_page(request: Request, _: AuthRequired):
     if guild_id:
         summary = await get_organizers_summary(guild_id)
     return await _render(request, "organizers.html", summary=summary)
+
+
+@app.get("/panel/users", response_class=HTMLResponse)
+async def panel_users_page(request: Request, _: DevRequired):
+    users = await db.list_web_panel_users()
+    return await _render(
+        request,
+        "panel_users.html",
+        panel_users=users,
+        dev_username=auth.developer_username(),
+    )
+
+
+@app.post("/panel/users")
+async def panel_users_create(
+    request: Request,
+    _: DevRequired,
+    username: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+):
+    name_err = auth.validate_panel_username(username)
+    if name_err:
+        _flash(request, name_err, "error")
+        return RedirectResponse("/panel/users", status_code=303)
+
+    if len(password) < 8:
+        _flash(request, "Пароль: минимум 8 символов.", "error")
+        return RedirectResponse("/panel/users", status_code=303)
+    if password != password_confirm:
+        _flash(request, "Пароли не совпадают.", "error")
+        return RedirectResponse("/panel/users", status_code=303)
+
+    if await db.get_web_panel_user(username):
+        _flash(request, "Такой логин уже существует.", "error")
+        return RedirectResponse("/panel/users", status_code=303)
+
+    creator = auth.session_user(request)
+    created_by = creator["username"] if creator else "developer"
+    await db.create_web_panel_user(
+        username.strip(),
+        hash_password(password),
+        created_by=created_by,
+    )
+    _flash(request, f"Администратор «{username.strip()}» создан.", "info")
+    return RedirectResponse("/panel/users", status_code=303)
+
+
+@app.post("/panel/users/{user_id}/delete")
+async def panel_users_delete(
+    request: Request,
+    user_id: int,
+    _: DevRequired,
+):
+    user = await db.get_web_panel_user_by_id(user_id)
+    if not user:
+        _flash(request, "Пользователь не найден.", "error")
+        return RedirectResponse("/panel/users", status_code=303)
+
+    await db.delete_web_panel_user(user_id)
+    _flash(request, f"Администратор «{user['username']}» удалён.", "info")
+    return RedirectResponse("/panel/users", status_code=303)
 
 
 def run():

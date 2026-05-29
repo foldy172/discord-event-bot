@@ -6,6 +6,7 @@ from config import (
     ADMIN_USER_IDS,
     ALLOWED_ROLE_IDS,
     ALLOWED_USER_IDS,
+    EVENT_CHANNEL_ID,
 )
 
 MSG_NOT_CONFIGURED = (
@@ -13,6 +14,15 @@ MSG_NOT_CONFIGURED = (
     "`ALLOWED_ROLE_IDS`, `ALLOWED_USER_IDS`, `ADMIN_ROLE_IDS`, `ADMIN_USER_IDS`."
 )
 MSG_NO_PERMISSION = "У вас нет прав для этого действия."
+MSG_WRONG_EVENT_CHANNEL = (
+    "Создавать объявления можно только в канале <#{channel_id}>."
+)
+
+
+def is_allowed_event_channel(channel_id: int) -> bool:
+    if EVENT_CHANNEL_ID is None:
+        return True
+    return channel_id == EVENT_CHANNEL_ID
 MSG_NO_EVENT_ACCESS = "Вы можете управлять только своими ивентами или теми, где вы со-хост."
 
 

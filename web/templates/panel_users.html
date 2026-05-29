@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Администраторы панели{% endblock %}
+{% block content %}
+<header class="page-header" data-animate>
+  <h2>Администраторы панели</h2>
+  <p class="subtitle">Учётные записи с доступом к сайту (ивенты, организаторы). Создавать может только разработчик.</p>
+</header>
+
+<div class="card" data-animate>
+  <h3>Разработчик</h3>
+  <p class="muted">Логин из <code>.env</code>: <strong>{{ dev_username }}</strong> — полный доступ и управление админами.</p>
+</div>
+
+<div class="card" data-animate>
+  <h3>Новый администратор</h3>
+  <form method="post" action="/panel/users" class="form-stack">
+    <label for="username">Логин</label>
+    <input id="username" name="username" type="text" required autocomplete="off" placeholder="event_admin" pattern="[A-Za-z0-9_]{3,32}" minlength="3" maxlength="32">
+
+    <label for="password">Пароль</label>
+    <input id="password" name="password" type="password" required autocomplete="new-password" minlength="8">
+
+    <label for="password_confirm">Повтор пароля</label>
+    <input id="password_confirm" name="password_confirm" type="password" required autocomplete="new-password" minlength="8">
+
+    <button type="submit" class="btn btn-primary">Создать</button>
+  </form>
+</div>
+
+<div class="card" data-animate>
+  <h3>Администраторы ({{ panel_users|length }})</h3>
+  {% if panel_users %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Логин</th>
+        <th>Создан</th>
+        <th>Кем</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in panel_users %}
+      <tr>
+        <td><code>{{ u.username }}</code></td>
+        <td class="muted">{{ u.created_at }}</td>
+        <td class="muted">{{ u.created_by }}</td>
+        <td>
+          <form method="post" action="/panel/users/{{ u.id }}/delete" data-confirm="Удалить «{{ u.username }}»?">
+            <button type="submit" class="btn btn-secondary btn-sm">Удалить</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Пока нет администраторов — создайте первого выше.</p>
+  {% endif %}
+</div>
+{% endblock %}

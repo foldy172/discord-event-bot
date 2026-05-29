@@ -19,10 +19,13 @@ from config import (
     ADMIN_USER_IDS,
     ALLOWED_ROLE_IDS,
     ALLOWED_USER_IDS,
+    EVENT_CHANNEL_ID,
 )
 from permissions import (
     MSG_NOT_CONFIGURED,
     MSG_NO_PERMISSION,
+    MSG_WRONG_EVENT_CHANNEL,
+    is_allowed_event_channel,
     is_events_enabled,
     user_can_create,
     user_can_manage,
@@ -100,6 +103,13 @@ class EventsCog(commands.Cog):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message(
                 "Создавать ивент можно только в текстовом канале.",
+                ephemeral=True,
+            )
+            return
+
+        if not is_allowed_event_channel(interaction.channel.id):
+            await interaction.response.send_message(
+                MSG_WRONG_EVENT_CHANNEL.format(channel_id=EVENT_CHANNEL_ID),
                 ephemeral=True,
             )
             return

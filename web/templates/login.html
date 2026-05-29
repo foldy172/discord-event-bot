@@ -22,8 +22,9 @@
       <div class="flash error flash-visible">{{ error }}</div>
       {% endif %}
       {% if not configured %}
-      <p class="muted">Добавьте в <code>.env</code> переменные <code>WEB_USERNAME</code> и <code>WEB_PASSWORD</code>, затем перезапустите бота.</p>
+      <p class="muted">Добавьте в <code>.env</code> пароль разработчика (<code>WEB_DEV_PASSWORD</code> или <code>WEB_PASSWORD</code>), затем перезапустите бота.</p>
       {% else %}
+      <p class="muted login-hint">Разработчик — из <code>.env</code>. Администраторы — логины, созданные на сайте.</p>
       <form method="post" action="/login" class="login-form">
         <label for="username">Логин</label>
         <input id="username" name="username" type="text" required autocomplete="username" placeholder="admin">

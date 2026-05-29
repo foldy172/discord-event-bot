@@ -79,6 +79,17 @@ async def init_db() -> None:
             )
             """
         )
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS web_panel_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                created_by TEXT NOT NULL
+            )
+            """
+        )
         await db.commit()
         await _migrate_events_table(db)
 
@@ -506,3 +517,71 @@ async def is_event_cohost(event_id: int, user_id: int) -> bool:
             (event_id, user_id),
         )
         return await cursor.fetchone() is not None
+
+
+async def list_web_panel_users() -> list[dict]:
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """
+            SELECT id, username, created_at, created_by
+            FROM web_panel_users
+            ORDER BY username COLLATE NOCASE
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def get_web_panel_user(username: str) -> dict | None:
+    name = username.strip()
+    if not name:
+        return None
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT * FROM web_panel_users WHERE username = ? COLLATE NOCASE",
+            (name,),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def get_web_panel_user_by_id(user_id: int) -> dict | None:
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT * FROM web_panel_users WHERE id = ?", (user_id,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def create_web_panel_user(
+    username: str,
+    password_hash: str,
+    *,
+    created_by: str,
+) -> int:
+    from datetime import datetime, timezone
+
+    created_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        cursor = await db.execute(
+            """
+            INSERT INTO web_panel_users (username, password_hash, created_at, created_by)
+            VALUES (?, ?, ?, ?)
+            """,
+            (username, password_hash, created_at, created_by),
+        )
+        await db.commit()
+        return cursor.lastrowid
+
+
+async def delete_web_panel_user(user_id: int) -> bool:
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM web_panel_users WHERE id = ?", (user_id,)
+        )
+        await db.commit()
+        return cursor.rowcount > 0
